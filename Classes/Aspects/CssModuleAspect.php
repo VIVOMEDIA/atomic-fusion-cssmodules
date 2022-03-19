@@ -34,24 +34,25 @@ class CssModuleAspect
     protected $contextName;
 
     /**
-     * @Flow\Around("setting(PackageFactory.AtomicFusion.CssModules.enable) && method(PackageFactory\AtomicFusion\FusionObjects\ComponentImplementation->renderComponent())")
+     * @Flow\Around("setting(PackageFactory.AtomicFusion.CssModules.enable) && method(Neos\Fusion\FusionObjects\ComponentImplementation->render())")
      * @param JoinPointInterface $joinPoint
      * @return mixed
      */
     public function addStyleInformationToComponent(JoinPointInterface $joinPoint)
     {
         $componentImplementation = $joinPoint->getProxy();
+
         $fusionPrototypeName = $this->getFusionObjectNameFromFusionObject($componentImplementation);
 
         if ($cssModuleFileName = $this->getCssModuleFileNameFromFusionPrototypeName($fusionPrototypeName)) {
             $cssModuleContents = file_get_contents($cssModuleFileName);
             $styles = json_decode($cssModuleContents, true);
 
-            $context = $componentImplementation->getRuntime()->getCurrentContext();
+            $context = $joinPoint->getMethodArgument('context');
             $context[$this->contextName] = $styles;
-            $componentImplementation->getRuntime()->pushContextArray($context);
+
+            $joinPoint->setMethodArgument('context', $context);
             $renderedComponent = $joinPoint->getAdviceChain()->proceed($joinPoint);
-            $componentImplementation->getRuntime()->popContext();
 
             return $renderedComponent;
         }
